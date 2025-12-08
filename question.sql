@@ -96,3 +96,43 @@ LEFT JOIN rental AS r ON c.customer_id = r.customer_id
 WHERE c.active = true
 GROUP BY c.customer_id
 HAVING COUNT(rental_id) >= 35;
+
+
+/*
+* ==========================================================================================
+* | 7번 (2025.12.08) 
+* | 이틀 연속 미세먼지 수치가 증가하여 그 다음 날이 30㎍/㎥ 이상이 된 날을 추출하는 쿼리를 작성해주세요. 
+* | 그 다음 날 추출
+* ===========================================================================================
+*/
+
+SELECT measured_at 
+FROM (SELECT measured_at, pm10, 
+              LAG(measured_at) OVER (ORDER BY measured_at) AS yesterday,
+              LAG(pm10) OVER (ORDER BY measured_at) AS yesterday_pm10, 
+              LAG(measured_at, 2) OVER (ORDER BY measured_at) AS two,
+              LAG(pm10,2) OVER (ORDER BY measured_at) AS two_pm10
+  FROM measurements) AS bad30
+WHERE julianday(measured_at) - julianday(yesterday) = 1
+      AND julianday(measured_at) - julianday(two) = 2
+      AND pm10 >= 30 AND two_pm10 < yesterday_pm10 AND yesterday_pm10 < pm10
+
+
+/*
+* ==========================================================================================
+* | 8번 (2025.12.08) 
+* | 아래 조건을 만족하는 와인 목록을 출력해주세요.
+* | 1. 화이트 와인일 것
+* | 2. 와인 품질 점수가 7점 이상일 것
+* | 3. 밀도와 잔여 설탕이 와인 전체의 해당 성분 평균 보다 높을 것
+* | 4. 산도가 화이트 와인 전체 평균보다 낮고, 구연산 값이 화이트 와인 전체 평균 보다 높을 것
+* ===========================================================================================
+*/
+SELECT *
+FROM wines
+WHERE color = 'white'
+  AND quality >= 7
+  AND density > (SELECT AVG(density) FROM wines)
+  AND residual_sugar > (SELECT AVG(residual_sugar) FROM wines)
+  AND pH < (SELECT AVG(pH) FROM wines WHERE color = 'white')
+  AND citric_acid > (SELECT AVG(citric_acid) FROM wines WHERE color = 'white')
