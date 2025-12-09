@@ -136,3 +136,25 @@ WHERE color = 'white'
   AND residual_sugar > (SELECT AVG(residual_sugar) FROM wines)
   AND pH < (SELECT AVG(pH) FROM wines WHERE color = 'white')
   AND citric_acid > (SELECT AVG(citric_acid) FROM wines WHERE color = 'white')
+
+
+  /*
+* ==========================================================================================
+* | 9번 (2025.12.09) 
+* | 한국 국가대표팀으로 여자 배구 종목에 연속 2회 이상 참가한 선수 id와 이름을 출력하세요.
+* ===========================================================================================
+*/
+
+# 다시 풀어보기
+SELECT DISTINCT athlete_id AS id, name
+FROM (
+  SELECT athlete_id, name, year, 
+        LAG(year) OVER (PARTITION BY athlete_id ORDER BY year) AS prev_year
+  FROM records r
+  JOIN events e ON r.event_id = e.id
+  JOIN teams t ON r.team_id = t.id
+  JOIN games g ON r.game_id = g.id
+  JOIN athletes a ON r.athlete_id = a.id
+  WHERE e.event = 'Volleyball Women''s Volleyball' 
+    AND t.team = 'KOR') AS new_table
+WHERE year - prev_year = 4
