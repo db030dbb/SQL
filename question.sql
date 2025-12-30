@@ -368,7 +368,7 @@ GROUP BY strftime('%Y', purchased_at)
 
 /*
 * =====================================================================================================
-* | 20번 (2025.12.29) 
+* | 21번 (2025.12.29) 
 * | 고객ID가 10으로 나눈 나머지가 0인 사용자를 그룹 A, 나머지 사용자를 그룹 B에 배정한 쿼리를 작성해주세요.
 * | customer_id, bucket(할당된 사용자 그룹 -> A,B)이 열로 들어가있어야합니다.
 * ======================================================================================================
@@ -380,7 +380,7 @@ GROUP BY customer_id
 
 /*
 * =====================================================================================================
-* | 21번 (2025.12.29) 
+* | 22번 (2025.12.29) 
 * | 2023년 11월, 12월 온라인 주문에 대하여 order_date(주문일), weekday(요일)(Sunday, Monday 등),
 * | num_orders_today(주문일 당일의 주문 건수), 
 * | num_orders_from_yesterday(주문일 하루 이전 날짜부터 주문일 당일까지 연속된 이틀간의 합계 주문 건수의 합)
@@ -414,3 +414,68 @@ SELECT
   SUM(num_orders) OVER (ORDER BY order_date ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS num_orders_from_yesterday
 FROM daily_counts
 ORDER BY order_date
+
+
+/*
+* =====================================================================================================
+* | 23번 (2025.12.30) 
+* | customer_id 가 10으로 나누어 떨어지는 사용자를 A, 나머지를 B로 버킷을 할당합니다.
+* | 버킷, 버킷별 사용자 수, 평균 주문 수, 평균 주문 금액을 구하는 쿼리를 작성해주세요.
+* | 평균 집계에 사용되는 주문에는 반품된 주문은 제외하고, 평균값은 반올림해서 소수점 둘째 자리까지 표현해주세요.
+* ======================================================================================================
+*/
+--- customer_id 는 거래 수 만큼 생성이 되므로 is_returned 가 true 여도 주문만 있다면 customer_id 값은 있음
+---> 따라서 where is_returned = false 를 서브쿼리로 안 써도 된다.
+WITH bucket_table AS (
+  SELECT customer_id,
+    (CASE WHEN customer_id % 10 = 0 THEN 'A' ELSE 'B' END) AS bucket,
+    SUM(CASE WHEN transaction_id IS NOT NULL THEN 1 ELSE 0 END)AS cnt_orders, 
+    SUM(total_price) AS user_price
+  FROM transactions
+  WHERE is_returned = false
+  GROUP BY customer_id)
+
+SELECT bucket, COUNT(customer_id) AS user_count, 
+  ROUND(AVG(cnt_orders),2) AS avg_orders,
+  ROUND(AVG(user_price),2) AS avg_revenue
+FROM bucket_table
+GROUP BY bucket
+
+
+/*
+* =====================================================================================================
+* | 24번 (2025.12.30) 
+* | 고객별 순매출을 집계한 뒤, 각 도시별 최고 순매출 고객을 추출하는 쿼리를 작성해주세요.
+* | 고객별 순매출은 주문 금액에서 할인 금액을 제외한 금액을 의미하고 반품 주문은 집계에서 제외해주세요.
+* | city_id, customer_id, total_spent(해당 고객의 순 매출)의 컬럼만 출력해주세요.
+* ======================================================================================================
+*/
+WITH customer_spent AS (
+  SELECT customer_id, SUM(total_price - discount_amount) AS total_spent, city_id
+  FROM transactions
+  WHERE is_returned = false
+  GROUP BY customer_id, city_id
+),
+  ranked AS (
+    SELECT 
+      city_id,
+      customer_id,
+      total_spent,
+      ROW_NUMBER() OVER (PARTITION BY city_id ORDER BY total_spent DESC) AS rnk
+    FROM customer_spent
+)
+
+
+SELECT city_id, customer_id, total_spent
+FROM ranked
+WHERE rnk = 1
+
+/*
+* =====================================================================================================
+* | 25번 (2025.12.30) 
+* | 'Ho Ho Ho' 가 출력되는 쿼리를 작성해주세요. 고생했습니다.
+* ======================================================================================================
+*/
+SELECT 'Ho Ho Ho'
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
